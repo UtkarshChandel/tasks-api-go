@@ -1,26 +1,50 @@
 package main
 
 import (
-	"fmt"
-	"io/ioutil"
+	"context"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"time"
+
+	"github.com/UtkarshChandel/tasks-api-go/handlers"
 )
 
 func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Hello World")
-		d, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w,"Oops",http.StatusBadRequest)
-			return
-		}
-		log.Printf("Data: %s\n", d)
-		fmt.Fprintf(w, "Hello %s", d)
-	})
-	http.HandleFunc("/byee", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Byee World")
-	})
+	l := log.New(os.Stdout, "product-api", log.LstdFlags)
 
-	http.ListenAndServe(":9090", nil)
+	hh := handlers.NewHello(l)
+	gh := handlers.NewGoodBye(l)
+
+	sm := http.NewServeMux()
+	sm.Handle("/", hh)
+	sm.Handle("/goodByee", gh)
+
+	s := &http.Server{
+		Addr:         ":9090",
+		Handler:      sm,
+		IdleTimeout:  120 * time.Second,
+		ReadTimeout:  1 * time.Second,
+		WriteTimeout: 1 * time.Second,
+	}
+
+	
+	go func(){
+		err := s.ListenAndServe()
+		if err != nil{
+			l.Fatal(err)
+		}
+	}()
+
+	sigChan := make(chan os.Signal)
+	signal.Notify(sigChan,os.Interrupt)
+	signal.Notify(sigChan,os.Kill)  
+
+	sig := <- sigChan
+	l.Println("Received terminate, gracefully shutdown",sig)
+
+	tc, _ := context.WithTimeout(context.Background(),30*time.Second)
+	s.Shutdown(tc)
+	
 }
