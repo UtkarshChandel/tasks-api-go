@@ -21,6 +21,10 @@ func (p *Products) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//handle an update
+	
+
+
 	//catch all
 	rw.WriteHeader(http.StatusMethodNotAllowed)
 }
